@@ -27,13 +27,13 @@ public class AccountManager {
 
     }
 
-    public void loadAccount(UUID owner) {
+    public void loadAccount(UUID owner, boolean createIfNotFound) {
 
-        Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §7[!] Loading account for " + owner.toString() + ".");
+        Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [StorageManager] §7[!] Loading account for " + owner.toString() + ".");
 
         for (Account account : accounts) {
             if (account.getOwner().equals(owner)) {
-                Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §7[+] Account for " + owner.toString() + " already loaded.");
+                Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [StorageManager] §7[+] Account for " + owner.toString() + " already loaded.");
                 return;
             }
         }
@@ -47,14 +47,20 @@ public class AccountManager {
 
                 accounts.add(new Account(owner, balance));
 
-                Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §a[+] Loaded account for " + owner.toString() + ".");
+                Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [StorageManager] §a[+] Loaded account for " + owner.toString() + ".");
 
             } else {
 
-                Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §7[!] Account for " + owner.toString() + " not found. Creating new account.");
+                if (!createIfNotFound) {
+
+                    return;
+
+                }
+
+                Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [StorageManager] §7[!] Account for " + owner.toString() + " not found. Creating new account.");
 
                 createAccount(owner);
-                loadAccount(owner);
+                loadAccount(owner, false);
 
             }
 
@@ -68,15 +74,19 @@ public class AccountManager {
 
     }
 
-    public void unloadAccount(UUID owner) {
+    public void unloadAccount(UUID owner, boolean kickPlayer) {
 
-        Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §7[!] Unloading account for " + owner.toString() + ".");
+        Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [StorageManager] §7[!] Unloading account for " + owner.toString() + ".");
 
         accounts.removeIf(account -> account.getOwner().equals(owner));
 
-        Bukkit.getPlayer(owner).kickPlayer("§cYour account was unloaded.");
+        if (kickPlayer) {
 
-        Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §a[+] Unloaded account for " + owner.toString() + ".");
+            Bukkit.getPlayer(owner).kickPlayer("§cYour account was unloaded.");
+
+        }
+
+        Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [StorageManager] §a[+] Unloaded account for " + owner.toString() + ".");
 
     }
 

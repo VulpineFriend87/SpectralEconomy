@@ -133,6 +133,8 @@ public class MainCommand implements CommandExecutor, TabCompleter {
 
                 if (account == null) {
 
+                    plugin.getAccountManager().loadAccount(targetUUID, false);
+
                     account = plugin.getAccountManager().getAccount(targetUUID);
 
                     if (account == null) {
@@ -165,7 +167,7 @@ public class MainCommand implements CommandExecutor, TabCompleter {
 
                 } else if (args[2].equalsIgnoreCase("unload")) {
 
-                    plugin.getAccountManager().unloadAccount(targetUUID);
+                    plugin.getAccountManager().unloadAccount(targetUUID, true);
                     sender.sendMessage(Colorize.color(plugin.getConfig().getString("messages.account.unload")
                             .replace("%player%", target.getName())));
 

@@ -81,7 +81,7 @@ public class PlaceholderManager extends PlaceholderExpansion {
             case "balance_formatted":
 
                 return plugin.getConfig().getString("placeholder_format")
-                        .replace("%balance%", String.valueOf(balance))
+                        .replace("%balance%", Format.format(balance))
                         .replace("%currency%", plugin.getConfig().getString("economy.currency"));
 
             default:

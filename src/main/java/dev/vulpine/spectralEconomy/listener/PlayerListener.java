@@ -17,14 +17,14 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
 
-        plugin.getAccountManager().loadAccount(event.getPlayer().getUniqueId());
+        plugin.getAccountManager().loadAccount(event.getPlayer().getUniqueId(), true);
 
     }
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
 
-        plugin.getAccountManager().unloadAccount(event.getPlayer().getUniqueId());
+        plugin.getAccountManager().unloadAccount(event.getPlayer().getUniqueId(), false);
 
     }
 
