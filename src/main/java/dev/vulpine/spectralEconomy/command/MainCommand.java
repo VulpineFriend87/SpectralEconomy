@@ -246,6 +246,18 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage(Colorize.color(plugin.getConfig().getString("messages.errors.invalid_arguments")));
 
                 }
+
+                if (!target.isOnline()) {
+
+                    account = plugin.getAccountManager().getAccount(targetUUID);
+
+                    if (account != null) {
+
+                        plugin.getAccountManager().unloadAccount(targetUUID, false);
+
+                    }
+                }
+
             } else {
 
                 sender.sendMessage(Colorize.color(plugin.getConfig().getString("messages.errors.invalid_arguments")));
