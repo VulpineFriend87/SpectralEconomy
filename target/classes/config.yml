@@ -10,8 +10,6 @@ storage:
 economy:
   currency: "$"
 
-placeholder_format: "%balance% %currency%" # No color codes here.
-
 messages:
 
   errors:

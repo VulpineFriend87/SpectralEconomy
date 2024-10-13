@@ -24,7 +24,7 @@ public final class SpectralEconomy extends JavaPlugin {
                 "§3    |   __§b|   __|   §3Spectral§bEconomy",
                 "§3    |__   §b|   __|   §3Version §b" + this.getDescription().getVersion(),
                 "§3    |_____§b|_____|   §7By VulpineFriend87",
-                "§3                  ",
+                "§3                    ",
                 "§3"
         };
 

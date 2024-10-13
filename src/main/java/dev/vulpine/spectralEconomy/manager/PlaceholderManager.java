@@ -76,12 +76,13 @@ public class PlaceholderManager extends PlaceholderExpansion {
         switch (identifier) {
             case "balance":
 
-                return balance.toString();
+                return String.valueOf(balance);
 
             case "balance_formatted":
 
-                String currency = plugin.getConfig().getString("economy.currency");
-                return currency + Format.format(balance);
+                return plugin.getConfig().getString("placeholder_format")
+                        .replace("%balance%", String.valueOf(balance))
+                        .replace("%currency%", plugin.getConfig().getString("economy.currency"));
 
             default:
 
