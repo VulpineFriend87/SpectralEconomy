@@ -32,13 +32,27 @@ public class StorageManager {
     private void setupMySQL(FileConfiguration config) {
         HikariConfig hikariConfig = new HikariConfig();
         String databaseName = config.getString("storage.mysql.database");
-        hikariConfig.setJdbcUrl("jdbc:mysql://" + config.getString("storage.mysql.host") + ":" +
-                config.getString("storage.mysql.port") + "/" + databaseName);
+        String jdbcUrl = "jdbc:mysql://" + config.getString("storage.mysql.host") + ":" +
+                config.getString("storage.mysql.port") + "/" + databaseName + "?useSSL=false";
+
+        hikariConfig.setJdbcUrl(jdbcUrl);
         hikariConfig.setUsername(config.getString("storage.mysql.user"));
         hikariConfig.setPassword(config.getString("storage.mysql.password"));
         hikariConfig.setDriverClassName("com.mysql.cj.jdbc.Driver");
 
+        hikariConfig.setMaximumPoolSize(10);
+        hikariConfig.setConnectionTimeout(30000);
+        hikariConfig.setIdleTimeout(600000);
+        hikariConfig.setMaxLifetime(1800000);
+
         dataSource = new HikariDataSource(hikariConfig);
+
+        try (Connection connection = dataSource.getConnection()) {
+            System.out.println("Connessione a MySQL riuscita.");
+        } catch (SQLException e) {
+            e.printStackTrace();
+            System.err.println("Errore nella connessione a MySQL: " + e.getMessage());
+        }
     }
 
     private void setupSQLite(SpectralEconomy plugin) {
@@ -68,9 +82,9 @@ public class StorageManager {
 
     private void createAccountsTable() {
         String createTableSQL = "CREATE TABLE IF NOT EXISTS accounts (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                "owner TEXT NOT NULL," +
-                "balance REAL DEFAULT 0" +
+                "id INT PRIMARY KEY AUTO_INCREMENT," +
+                "owner VARCHAR(255) NOT NULL," +
+                "balance DOUBLE DEFAULT 0" +
                 ");";
 
         try (Connection connection = dataSource.getConnection();
@@ -78,6 +92,7 @@ public class StorageManager {
             statement.execute(createTableSQL);
         } catch (SQLException e) {
             e.printStackTrace();
+            System.err.println("Errore nella creazione della tabella accounts: " + e.getMessage());
         }
     }
 
