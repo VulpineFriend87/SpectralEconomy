@@ -3,6 +3,7 @@ package dev.vulpine.spectralEconomy.manager;
 import dev.vulpine.spectralEconomy.SpectralEconomy;
 import dev.vulpine.spectralEconomy.instance.Account;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -80,7 +81,7 @@ public class AccountManager {
 
         accounts.removeIf(account -> account.getOwner().equals(owner));
 
-        if (kickPlayer) {
+        if (kickPlayer && Bukkit.getPlayer(owner) != null) {
 
             Bukkit.getPlayer(owner).kickPlayer("§cYour account was unloaded.");
 
