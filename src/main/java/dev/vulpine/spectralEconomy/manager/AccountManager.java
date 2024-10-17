@@ -3,16 +3,15 @@ package dev.vulpine.spectralEconomy.manager;
 import dev.vulpine.spectralEconomy.SpectralEconomy;
 import dev.vulpine.spectralEconomy.instance.Account;
 import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 public class AccountManager {
 
@@ -22,7 +21,7 @@ public class AccountManager {
 
     public AccountManager(SpectralEconomy plugin) {
 
-        this.plugin = plugin;
+        AccountManager.plugin = plugin;
 
         accounts = new ArrayList<>();
 
@@ -30,54 +29,57 @@ public class AccountManager {
 
     public void loadAccount(UUID owner, boolean createIfNotFound) {
 
-        Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [StorageManager] §7[!] Loading account for " + owner.toString() + ".");
+        Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §7[!] Loading account for " + owner + ".");
 
         for (Account account : accounts) {
             if (account.getOwner().equals(owner)) {
-                Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [StorageManager] §7[+] Account for " + owner.toString() + " already loaded.");
+                Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §7[+] Account for " + owner + " already loaded.");
                 return;
             }
         }
 
-        String query = "SELECT balance FROM accounts WHERE owner = '" + owner.toString() + "';";
-        try (ResultSet resultSet = StorageManager.executeQuery(query)) {
+        String query = "SELECT balance FROM accounts WHERE owner = '" + owner + "';";
 
-            if (resultSet != null && resultSet.next()) {
+        StorageManager.executeQuery(query).thenAccept(resultSet -> {
+            try {
 
-                BigDecimal balance = resultSet.getBigDecimal("balance");
+                if (resultSet != null && resultSet.next()) {
 
-                accounts.add(new Account(owner, balance));
+                    BigDecimal balance = resultSet.getBigDecimal("balance");
 
-                Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [StorageManager] §a[+] Loaded account for " + owner.toString() + ".");
+                    accounts.add(new Account(owner, balance));
 
-            } else {
+                    Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §a[+] Loaded account for " + owner + ".");
 
-                if (!createIfNotFound) {
+                } else {
 
-                    return;
+                    if (!createIfNotFound) {
+
+                        return;
+
+                    }
+
+                    Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §7[!] Account for " + owner + " not found. Creating new account.");
+
+                    createAccount(owner);
+                    loadAccount(owner, false);
 
                 }
 
-                Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [StorageManager] §7[!] Account for " + owner.toString() + " not found. Creating new account.");
+            } catch (SQLException e) {
 
-                createAccount(owner);
-                loadAccount(owner, false);
+                Bukkit.getPlayer(owner).kickPlayer("§cError loading account. Please try again later.");
+
+                e.printStackTrace();
 
             }
-
-        } catch (SQLException e) {
-
-            Bukkit.getPlayer(owner).kickPlayer("§cError loading account. Please try again later.");
-
-            e.printStackTrace();
-
-        }
+        });
 
     }
 
     public void unloadAccount(UUID owner, boolean kickPlayer) {
 
-        Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [StorageManager] §7[!] Unloading account for " + owner.toString() + ".");
+        Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §7[!] Unloading account for " + owner + ".");
 
         accounts.removeIf(account -> account.getOwner().equals(owner));
 
@@ -87,86 +89,93 @@ public class AccountManager {
 
         }
 
-        Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [StorageManager] §a[+] Unloaded account for " + owner.toString() + ".");
+        Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §a[+] Unloaded account for " + owner + ".");
 
     }
 
     public void createAccount(UUID owner) {
 
-        Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §7[!] Creating account for " + owner.toString() + ".");
+        Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §7[!] Creating account for " + owner + ".");
 
         String query = "INSERT INTO accounts (owner, balance) VALUES (?, ?);";
 
-        try (Connection connection = plugin.getStorageManager().getDataSource().getConnection();
-             PreparedStatement statement = connection.prepareStatement(query)) {
+        CompletableFuture.runAsync(() -> {
+            try (Connection connection = plugin.getStorageManager().getDataSource().getConnection();
+                 PreparedStatement statement = connection.prepareStatement(query)) {
 
-            statement.setString(1, owner.toString());
-            statement.setBigDecimal(2, BigDecimal.ZERO);
+                statement.setString(1, owner.toString());
+                statement.setBigDecimal(2, BigDecimal.ZERO);
 
-            statement.executeUpdate();
+                statement.executeUpdate();
 
-            Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §a[+] Created account for " + owner + ".");
+                Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §a[+] Created account for " + owner + ".");
 
-        } catch (SQLException e) {
+            } catch (SQLException e) {
 
-            Bukkit.getPlayer(owner).kickPlayer("§cError creating account. Please try again later.");
+                Bukkit.getPlayer(owner).kickPlayer("§cError creating account. Please try again later.");
 
-            e.printStackTrace();
+                e.printStackTrace();
 
-        }
+            }
+        });
 
     }
 
     public void deleteAccount(UUID owner) {
 
-        Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §7[!] Removing account for " + owner.toString() + ".");
+        Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §7[!] Removing account for " + owner + ".");
 
         String query = "DELETE FROM accounts WHERE owner = ?;";
 
-        try (Connection connection = plugin.getStorageManager().getDataSource().getConnection();
-             PreparedStatement statement = connection.prepareStatement(query)) {
+        CompletableFuture.runAsync(() -> {
+            try (Connection connection = plugin.getStorageManager().getDataSource().getConnection();
+                 PreparedStatement statement = connection.prepareStatement(query)) {
 
-            statement.setString(1, owner.toString());
+                statement.setString(1, owner.toString());
 
-            statement.executeUpdate();
+                statement.executeUpdate();
 
-            Bukkit.getPlayer(owner).kickPlayer("§cYour account was removed.");
+                Bukkit.getScheduler().runTask(plugin, () -> Bukkit.getPlayer(owner).kickPlayer("§cYour account was removed."));
 
-            Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §a[+] Removed account for " + owner.toString() + ".");
+                Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §a[+] Removed account for " + owner + ".");
 
-        } catch (SQLException e) {
+            } catch (SQLException e) {
 
-            e.printStackTrace();
+                e.printStackTrace();
 
-        }
+            }
+        });
+
 
     }
 
     public static void updateAccount(Account account) {
 
-        Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §7[!] Updating account for " + account.getOwner().toString() + ".");
+        Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §7[!] Updating account for " + account.getOwner() + ".");
 
         String query = "UPDATE accounts SET balance = ? WHERE owner = ?;";
 
-        try (Connection connection = plugin.getStorageManager().getDataSource().getConnection();
-             PreparedStatement statement = connection.prepareStatement(query)) {
+        CompletableFuture.runAsync(() -> {
+            try (Connection connection = plugin.getStorageManager().getDataSource().getConnection();
+                 PreparedStatement statement = connection.prepareStatement(query)) {
 
-            statement.setBigDecimal(1, account.getBalance());
-            statement.setString(2, account.getOwner().toString());
+                statement.setBigDecimal(1, account.getBalance());
+                statement.setString(2, account.getOwner().toString());
 
-            statement.executeUpdate();
+                statement.executeUpdate();
 
-            Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §a[+] Updated account for " + account.getOwner().toString() + ".");
+                Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §a[+] Updated account for " + account.getOwner() + ".");
 
-        } catch (SQLException e) {
+            } catch (SQLException e) {
 
-            Bukkit.getPlayer(account.getOwner()).kickPlayer("§cError updating account. Please try again later.");
+                Bukkit.getPlayer(account.getOwner()).kickPlayer("§cError updating account. Please try again later.");
 
-            Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §c[-] Error updating account for " + account.getOwner().toString() + ".");
+                Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [StorageManager] §c[-] Error updating account for " + account.getOwner() + ".");
 
-            e.printStackTrace();
+                e.printStackTrace();
 
-        }
+            }
+        });
 
     }
 

@@ -11,10 +11,15 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class StorageManager {
 
     private static HikariDataSource dataSource;
+    private static final ExecutorService databaseExecutor = Executors.newFixedThreadPool(5);
 
     public StorageManager(SpectralEconomy plugin) {
         FileConfiguration config = plugin.getConfig();
@@ -40,19 +45,21 @@ public class StorageManager {
         hikariConfig.setPassword(config.getString("storage.mysql.password"));
         hikariConfig.setDriverClassName("com.mysql.cj.jdbc.Driver");
 
-        hikariConfig.setMaximumPoolSize(10);
+        hikariConfig.setMaximumPoolSize(20);
         hikariConfig.setConnectionTimeout(30000);
         hikariConfig.setIdleTimeout(600000);
-        hikariConfig.setMaxLifetime(1800000);
+        hikariConfig.setMaxLifetime(30000);
 
         dataSource = new HikariDataSource(hikariConfig);
 
-        try (Connection connection = dataSource.getConnection()) {
-            System.out.println("Connessione a MySQL riuscita.");
-        } catch (SQLException e) {
-            e.printStackTrace();
-            System.err.println("Errore nella connessione a MySQL: " + e.getMessage());
-        }
+        databaseExecutor.submit(() -> {
+            try (Connection connection = dataSource.getConnection()) {
+                System.out.println("Successfully connected to MySQL.");
+            } catch (SQLException e) {
+                e.printStackTrace();
+                System.err.println("Error connecting to MySQL: " + e.getMessage());
+            }
+        });
     }
 
     private void setupSQLite(SpectralEconomy plugin) {
@@ -67,7 +74,6 @@ public class StorageManager {
         File databaseFile = new File(dbFile);
 
         try {
-
             if (!databaseFile.exists()) {
                 databaseFile.createNewFile();
             }
@@ -79,7 +85,6 @@ public class StorageManager {
         dataSource = new HikariDataSource(hikariConfig);
     }
 
-
     private void createAccountsTable() {
         String createTableSQL = "CREATE TABLE IF NOT EXISTS accounts (" +
                 "id INT PRIMARY KEY AUTO_INCREMENT," +
@@ -87,43 +92,50 @@ public class StorageManager {
                 "balance DOUBLE DEFAULT 0" +
                 ");";
 
-        try (Connection connection = dataSource.getConnection();
-             Statement statement = connection.createStatement()) {
-            statement.execute(createTableSQL);
-        } catch (SQLException e) {
-            e.printStackTrace();
-            System.err.println("Errore nella creazione della tabella accounts: " + e.getMessage());
-        }
+        // Run table creation asynchronously
+        executeUpdate(createTableSQL);
     }
 
-    public static void executeUpdate(String sql) {
-        try (Connection connection = dataSource.getConnection();
-             Statement statement = connection.createStatement()) {
-            statement.executeUpdate(sql);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+    public CompletableFuture<Void> executeUpdate(String sql) {
+        return CompletableFuture.runAsync(() -> {
+            try (Connection connection = dataSource.getConnection();
+                 Statement statement = connection.createStatement()) {
+                statement.executeUpdate(sql);
+            } catch (SQLException e) {
+                e.printStackTrace();
+                System.err.println("Error executing update: " + e.getMessage());
+            }
+        }, databaseExecutor).orTimeout(10, TimeUnit.SECONDS);
     }
 
-    public static ResultSet executeQuery(String sql) {
-        try {
-            Connection connection = dataSource.getConnection();
-            Statement statement = connection.createStatement();
-            return statement.executeQuery(sql);
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
+    public static CompletableFuture<ResultSet> executeQuery(String sql) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                Connection connection = dataSource.getConnection();
+                Statement statement = connection.createStatement();
+                return statement.executeQuery(sql);
+            } catch (SQLException e) {
+                e.printStackTrace();
+                return null;
+            }
+        }, databaseExecutor).orTimeout(10, TimeUnit.SECONDS);
     }
 
     public void close() {
         if (dataSource != null) {
             dataSource.close();
         }
+        databaseExecutor.shutdown();
+        try {
+            if (!databaseExecutor.awaitTermination(60, TimeUnit.SECONDS)) {
+                databaseExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            databaseExecutor.shutdownNow();
+        }
     }
 
     public HikariDataSource getDataSource() {
         return dataSource;
     }
-
 }

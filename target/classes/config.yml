@@ -4,7 +4,7 @@ storage:
     host: localhost
     port: 104
     database: thisisamysqldatabase
-    username: thisisamysqlusername
+    user: thisisamysqlusername
     password: thisisastrongpassword
 
 economy:
