@@ -87,12 +87,11 @@ public class StorageManager {
 
     private void createAccountsTable() {
         String createTableSQL = "CREATE TABLE IF NOT EXISTS accounts (" +
-                "id INT PRIMARY KEY AUTO_INCREMENT," +
+                "id INTEGER PRIMARY KEY," +
                 "owner VARCHAR(255) NOT NULL," +
                 "balance DOUBLE DEFAULT 0" +
                 ");";
 
-        // Run table creation asynchronously
         executeUpdate(createTableSQL);
     }
 
