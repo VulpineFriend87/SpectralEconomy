@@ -25,13 +25,13 @@ public class AccountManager {
     }
 
     public void loadAccount(UUID owner, boolean createIfNotFound) {
-        Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [AccountManager] §7[!] Loading account for " + owner.toString() + ".");
+        Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [AccountManager] §7[!] Loading account for " + owner.toString() + ".");
 
         for (Account account : accounts) {
 
             if (account.getOwner().equals(owner)) {
 
-                Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [AccountManager] §7[+] Account for " + owner + " already loaded.");
+                Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [AccountManager] §7[+] Account for " + owner + " already loaded.");
                 return;
 
             }
@@ -48,18 +48,18 @@ public class AccountManager {
 
                     accounts.add(new Account(owner, balance));
 
-                    Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [AccountManager] §a[+] Loaded account for " + owner.toString() + ".");
+                    Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [AccountManager] §a[+] Loaded account for " + owner.toString() + ".");
 
                 } else {
 
                     if (resultSet == null) {
 
-                        Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [AccountManager] §4[-] Result set is null for account: " + owner.toString() + ".");
+                        Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [AccountManager] §4[-] Result set is null for account: " + owner.toString() + ".");
 
                     }
 
                     if (!createIfNotFound) return;
-                    Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [AccountManager] §7[!] Account for " + owner.toString() + " not found. Creating new account.");
+                    Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [AccountManager] §7[!] Account for " + owner.toString() + " not found. Creating new account.");
                     Bukkit.getScheduler().runTask(plugin, () -> createAccount(owner, true));
 
                 }
@@ -74,22 +74,22 @@ public class AccountManager {
     }
 
     public void unloadAccount(UUID owner, boolean kickPlayer) {
-        Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [AccountManager] §7[!] Unloading account for " + owner.toString() + ".");
+        Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [AccountManager] §7[!] Unloading account for " + owner.toString() + ".");
         accounts.removeIf(account -> account.getOwner().equals(owner));
 
         if (kickPlayer) {
             Bukkit.getScheduler().runTask(plugin, () -> Bukkit.getPlayer(owner).kickPlayer("§cYour account was unloaded."));
         }
 
-        Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [AccountManager] §a[+] Unloaded account for " + owner.toString() + ".");
+        Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [AccountManager] §a[+] Unloaded account for " + owner.toString() + ".");
     }
 
     public void createAccount(UUID owner, boolean load) {
-        Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [AccountManager] §7[!] Creating account for " + owner.toString() + ".");
+        Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [AccountManager] §7[!] Creating account for " + owner.toString() + ".");
         String query = "INSERT INTO accounts (owner, balance) VALUES ('" + owner.toString() + "', 0);";
 
         StorageManager.executeUpdate(query).thenRun(() -> {
-            Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [AccountManager] §a[+] Created account for " + owner.toString() + ".");
+            Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [AccountManager] §a[+] Created account for " + owner.toString() + ".");
             if (load) {
                 Bukkit.getScheduler().runTaskLater(plugin, () -> plugin.getAccountManager().loadAccount(owner, false), 20);
             }
@@ -101,12 +101,12 @@ public class AccountManager {
     }
 
     public void deleteAccount(UUID owner) {
-        Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [AccountManager] §7[!] Removing account for " + owner.toString() + ".");
+        Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [AccountManager] §7[!] Removing account for " + owner.toString() + ".");
         String query = "DELETE FROM accounts WHERE owner.toString() = '" + owner.toString() + "';";
 
         StorageManager.executeUpdate(query).thenRun(() -> {
             Bukkit.getScheduler().runTask(plugin, () -> Bukkit.getPlayer(owner).kickPlayer("§cYour account was removed."));
-            Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [AccountManager] §a[+] Removed account for " + owner.toString() + ".");
+            Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [AccountManager] §a[+] Removed account for " + owner.toString() + ".");
         }).exceptionally(e -> {
             e.printStackTrace();
             return null;
@@ -115,14 +115,14 @@ public class AccountManager {
 
     public static void updateAccount(Account account) {
 
-        Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [AccountManager] §7[!] Updating account for " + account.getOwner().toString() + ".");
+        Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [AccountManager] §7[!] Updating account for " + account.getOwner().toString() + ".");
         String query = "UPDATE accounts SET balance = " + account.getBalance() + " WHERE owner = '" + account.getOwner().toString() + "';";
 
         StorageManager.executeUpdate(query).thenRun(() -> {
-            Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [AccountManager] §a[+] Updated account for " + account.getOwner().toString() + ".");
+            Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [AccountManager] §a[+] Updated account for " + account.getOwner().toString() + ".");
         }).exceptionally(e -> {
             Bukkit.getScheduler().runTask(plugin, () -> Bukkit.getPlayer(account.getOwner()).kickPlayer("§cError updating account. Please try again later."));
-            Bukkit.getConsoleSender().sendMessage("[SpectralHalloween] [AccountManager] §c[-] Error updating account for " + account.getOwner().toString() + ".");
+            Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [AccountManager] §c[-] Error updating account for " + account.getOwner().toString() + ".");
             e.printStackTrace();
             return null;
         });
