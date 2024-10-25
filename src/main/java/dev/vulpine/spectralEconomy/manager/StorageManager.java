@@ -6,7 +6,6 @@ import dev.vulpine.spectralEconomy.SpectralEconomy;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.io.File;
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -20,6 +19,7 @@ public class StorageManager {
 
     private static HikariDataSource dataSource;
     private static final ExecutorService databaseExecutor = Executors.newFixedThreadPool(5);
+    private final boolean isMySQL;
 
     public StorageManager(SpectralEconomy plugin) {
         FileConfiguration config = plugin.getConfig();
@@ -27,8 +27,10 @@ public class StorageManager {
 
         if ("mysql".equalsIgnoreCase(storageMethod)) {
             setupMySQL(config);
-        } else if ("sqlite".equalsIgnoreCase(storageMethod)) {
-            setupSQLite(plugin);
+            isMySQL = true;
+        } else {
+            setupH2(plugin);
+            isMySQL = false;
         }
 
         createAccountsTable();
@@ -62,7 +64,7 @@ public class StorageManager {
         });
     }
 
-    private void setupSQLite(SpectralEconomy plugin) {
+    private void setupH2(SpectralEconomy plugin) {
         HikariConfig hikariConfig = new HikariConfig();
         File dataFolder = plugin.getDataFolder();
 
@@ -70,24 +72,23 @@ public class StorageManager {
             dataFolder.mkdirs();
         }
 
-        String dbFile = dataFolder + "/database.db";
-        File databaseFile = new File(dbFile);
+        String dbFilePath = new File(dataFolder, "database").getAbsolutePath();
+        String jdbcUrl = "jdbc:h2:file:" + dbFilePath + ";AUTO_SERVER=TRUE;TRACE_LEVEL_FILE=0";
 
-        try {
-            if (!databaseFile.exists()) {
-                databaseFile.createNewFile();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        hikariConfig.setJdbcUrl(jdbcUrl);
+        hikariConfig.setDriverClassName("org.h2.Driver");
+        hikariConfig.setMaximumPoolSize(20);
+        hikariConfig.setIdleTimeout(600000);
+        hikariConfig.setMaxLifetime(30000);
+        hikariConfig.setConnectionTimeout(30000);
+        hikariConfig.addDataSourceProperty("queryTimeout", "30");
 
-        hikariConfig.setJdbcUrl("jdbc:sqlite:" + dbFile);
         dataSource = new HikariDataSource(hikariConfig);
     }
 
     private void createAccountsTable() {
         String createTableSQL = "CREATE TABLE IF NOT EXISTS accounts (" +
-                "id INTEGER PRIMARY KEY," +
+                "id INTEGER PRIMARY KEY AUTO_INCREMENT," +
                 "owner VARCHAR(255) NOT NULL," +
                 "balance DOUBLE DEFAULT 0" +
                 ");";
@@ -95,7 +96,7 @@ public class StorageManager {
         executeUpdate(createTableSQL);
     }
 
-    public CompletableFuture<Void> executeUpdate(String sql) {
+    public static CompletableFuture<Void> executeUpdate(String sql) {
         return CompletableFuture.runAsync(() -> {
             try (Connection connection = dataSource.getConnection();
                  Statement statement = connection.createStatement()) {

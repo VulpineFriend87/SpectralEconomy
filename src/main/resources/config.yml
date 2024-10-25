@@ -1,5 +1,5 @@
 storage:
-  method: sqlite
+  method: h2 # h2 (local) or mysql (online)
   mysql:
     host: localhost
     port: 104
