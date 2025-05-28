@@ -1,12 +1,12 @@
-package pro.vulpine.vCrates.utils.logger;
+package dev.vulpine.spectralEconomy.util.logger;
 
-import pro.vulpine.vCrates.utils.Colorize;
+import dev.vulpine.spectralEconomy.util.Colorize;
 import org.bukkit.Bukkit;
 
 public class Logger {
 
     private static Level level = Level.INFO;
-    private static final String prefix = "&7[&3v&bCrates&7] &r";
+    private static final String prefix = "&7[&3Spectral&bEconomy&7] &r";
 
     public static void initialize(Level loggingLevel) {
 

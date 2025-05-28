@@ -1,4 +1,4 @@
-package pro.vulpine.vCrates.instance;
+package dev.vulpine.spectralEconomy.instance;
 
 public enum StorageMethod {
 

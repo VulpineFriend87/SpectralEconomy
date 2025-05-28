@@ -3,11 +3,13 @@ package dev.vulpine.spectralEconomy;
 import dev.vulpine.spectralEconomy.command.BalanceCommand;
 import dev.vulpine.spectralEconomy.command.MainCommand;
 import dev.vulpine.spectralEconomy.command.PayCommand;
+import dev.vulpine.spectralEconomy.instance.StorageMethod;
 import dev.vulpine.spectralEconomy.listener.PlayerListener;
 import dev.vulpine.spectralEconomy.manager.AccountManager;
 import dev.vulpine.spectralEconomy.manager.PlaceholderManager;
 import dev.vulpine.spectralEconomy.manager.StorageManager;
-import org.bukkit.Bukkit;
+import dev.vulpine.spectralEconomy.util.logger.Level;
+import dev.vulpine.spectralEconomy.util.logger.Logger;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class SpectralEconomy extends JavaPlugin {
@@ -17,6 +19,8 @@ public final class SpectralEconomy extends JavaPlugin {
 
     @Override
     public void onEnable() {
+
+        Logger.initialize(Level.INFO);
 
         String[] ascii = {
                 "§3",
@@ -30,13 +34,13 @@ public final class SpectralEconomy extends JavaPlugin {
 
         for (String line : ascii) {
 
-            Bukkit.getConsoleSender().sendMessage(line);
+            Logger.system(line);
 
         }
 
-        Bukkit.getConsoleSender().sendMessage("§7    [!] Starting Plugin...");
+        Logger.system("§7    [!] Starting Plugin...");
 
-        Bukkit.getConsoleSender().sendMessage("§7    [!] Registering Commands...");
+        Logger.system("§7    [!] Registering Commands...");
 
         getCommand("spectraleconomy").setExecutor(new MainCommand(this));
         getCommand("spectraleconomy").setTabCompleter(new MainCommand(this));
@@ -44,33 +48,39 @@ public final class SpectralEconomy extends JavaPlugin {
         getCommand("pay").setExecutor(new PayCommand(this));
         getCommand("pay").setTabCompleter(new PayCommand(this));
 
-        Bukkit.getConsoleSender().sendMessage("§7    [!] Registering Listeners...");
+        Logger.system("§7    [!] Registering Listeners...");
 
         getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
 
-        Bukkit.getConsoleSender().sendMessage("§7    [!] Registering Placeholders...");
+        Logger.system("§7    [!] Registering Placeholders...");
 
         if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
 
-            Bukkit.getConsoleSender().sendMessage("§7    [!] PlaceholderAPI found! Hooking...");
+            Logger.system("§7    [!] PlaceholderAPI found! Hooking...");
 
             new PlaceholderManager(this).register();
 
         }
 
-        Bukkit.getConsoleSender().sendMessage("§7    [!] Initializing Configuration...");
+        Logger.system("§7    [!] Initializing Configuration...");
 
         saveDefaultConfig();
 
-        Bukkit.getConsoleSender().sendMessage("§7    [!] Initializing AccountManager...");
+        Logger.system("§7    [!] Initializing AccountManager...");
 
         accountManager = new AccountManager(this);
 
-        Bukkit.getConsoleSender().sendMessage("§7    [!] Initializing StorageManager...");
+        Logger.system("§7    [!] Initializing StorageManager...");
 
-        storageManager = new StorageManager(this);
+        storageManager = new StorageManager(this,
+                StorageMethod.fromString(getConfig().getString("storage.method", "H2")),
+                getConfig().getString("storage.mysql.host", "localhost"),
+                getConfig().getString("storage.mysql.port", "3306"),
+                getConfig().getString("storage.mysql.database", "vcrates"),
+                getConfig().getString("storage.mysql.username", "vcrates"),
+                getConfig().getString("storage.mysql.password", ""));
 
-        Bukkit.getConsoleSender().sendMessage("§a    [!] Plugin Started!");
+        Logger.system("§a    [!] Plugin Started!");
 
     }
 

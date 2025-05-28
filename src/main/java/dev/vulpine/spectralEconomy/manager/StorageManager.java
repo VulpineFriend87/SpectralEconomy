@@ -3,87 +3,83 @@ package dev.vulpine.spectralEconomy.manager;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import dev.vulpine.spectralEconomy.SpectralEconomy;
-import org.bukkit.configuration.file.FileConfiguration;
+import dev.vulpine.spectralEconomy.instance.StorageMethod;
+import dev.vulpine.spectralEconomy.util.logger.Logger;
 
-import java.io.File;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 public class StorageManager {
 
+    private final SpectralEconomy plugin;
+
     private static HikariDataSource dataSource;
-    private static final ExecutorService databaseExecutor = Executors.newFixedThreadPool(5);
-    private final boolean isMySQL;
 
-    public StorageManager(SpectralEconomy plugin) {
-        FileConfiguration config = plugin.getConfig();
-        String storageMethod = config.getString("storage.method");
+    private final String host;
+    private final String port;
+    private final String database;
+    private final String username;
+    private final String password;
 
-        if ("mysql".equalsIgnoreCase(storageMethod)) {
-            setupMySQL(config);
-            isMySQL = true;
-        } else {
-            setupH2(plugin);
-            isMySQL = false;
+    public StorageManager(SpectralEconomy plugin, StorageMethod method, String host, String port, String database, String username, String password) {
+        this.plugin = plugin;
+
+        this.host = host;
+        this.port = port;
+        this.database = database;
+        this.username = username;
+        this.password = password;
+
+        if (method == null) {
+            method = StorageMethod.H2;
         }
+
+        setup(method);
 
         createAccountsTable();
     }
 
-    private void setupMySQL(FileConfiguration config) {
-        HikariConfig hikariConfig = new HikariConfig();
-        String databaseName = config.getString("storage.mysql.database");
-        String jdbcUrl = "jdbc:mysql://" + config.getString("storage.mysql.host") + ":" +
-                config.getString("storage.mysql.port") + "/" + databaseName + "?useSSL=false";
+    public void setup(StorageMethod method) {
 
-        hikariConfig.setJdbcUrl(jdbcUrl);
-        hikariConfig.setUsername(config.getString("storage.mysql.user"));
-        hikariConfig.setPassword(config.getString("storage.mysql.password"));
-        hikariConfig.setDriverClassName("com.mysql.cj.jdbc.Driver");
+        HikariConfig config = new HikariConfig();
 
-        hikariConfig.setMaximumPoolSize(20);
-        hikariConfig.setConnectionTimeout(30000);
-        hikariConfig.setIdleTimeout(600000);
-        hikariConfig.setMaxLifetime(30000);
+        if (method == StorageMethod.H2) {
 
-        dataSource = new HikariDataSource(hikariConfig);
+            String databasePath = plugin.getDataFolder().getAbsolutePath();
+            config.setJdbcUrl("jdbc:h2:file:" + databasePath + "/database;MODE=MYSQL;AUTO_RECONNECT=TRUE");
+            config.setDriverClassName("org.h2.Driver");
+            config.setUsername("sa");
+            config.setPassword("");
 
-        databaseExecutor.submit(() -> {
-            try (Connection connection = dataSource.getConnection()) {
-                System.out.println("Successfully connected to MySQL.");
-            } catch (SQLException e) {
-                e.printStackTrace();
-                System.err.println("Error connecting to MySQL: " + e.getMessage());
-            }
-        });
-    }
+            config.setMaximumPoolSize(10);
+            config.setMinimumIdle(2);
+            config.setIdleTimeout(60000);
+            config.setLeakDetectionThreshold(3000);
+            config.setMaxLifetime(1800000);
+            config.setConnectionTimeout(10000);
 
-    private void setupH2(SpectralEconomy plugin) {
-        HikariConfig hikariConfig = new HikariConfig();
-        File dataFolder = plugin.getDataFolder();
+        } else if (method == StorageMethod.MYSQL) {
 
-        if (!dataFolder.exists()) {
-            dataFolder.mkdirs();
+            config.setJdbcUrl("jdbc:mysql://" + host + ":" + port + "/" + database + "?useSSL=false&autoReconnect=true&characterEncoding=utf8");
+            config.setDriverClassName("com.mysql.cj.jdbc.Driver");
+            config.setUsername(username);
+            config.setPassword(password);
+
+            config.setMaximumPoolSize(10);
+            config.setMinimumIdle(2);
+            config.setIdleTimeout(30000);
+            config.setLeakDetectionThreshold(3000);
+            config.setMaxLifetime(1800000);
+            config.setConnectionTimeout(10000);
+
         }
 
-        String dbFilePath = new File(dataFolder, "database").getAbsolutePath();
-        String jdbcUrl = "jdbc:h2:file:" + dbFilePath + ";AUTO_SERVER=TRUE;TRACE_LEVEL_FILE=0";
+        config.setAutoCommit(true);
+        config.setValidationTimeout(3000);
+        config.setConnectionTestQuery("SELECT 1");
 
-        hikariConfig.setJdbcUrl(jdbcUrl);
-        hikariConfig.setDriverClassName("org.h2.Driver");
-        hikariConfig.setMaximumPoolSize(20);
-        hikariConfig.setIdleTimeout(600000);
-        hikariConfig.setMaxLifetime(30000);
-        hikariConfig.setConnectionTimeout(30000);
-        hikariConfig.addDataSourceProperty("queryTimeout", "30");
+        dataSource = new HikariDataSource(config);
 
-        dataSource = new HikariDataSource(hikariConfig);
     }
 
     private void createAccountsTable() {
@@ -96,46 +92,92 @@ public class StorageManager {
         executeUpdate(createTableSQL);
     }
 
-    public static CompletableFuture<Void> executeUpdate(String sql) {
-        return CompletableFuture.runAsync(() -> {
-            try (Connection connection = dataSource.getConnection();
-                 Statement statement = connection.createStatement()) {
-                statement.executeUpdate(sql);
+    public CompletableFuture<ResultSet> executeQuery(String query, Object... params) {
+
+        return CompletableFuture.supplyAsync(() -> {
+
+            Connection connection;
+            PreparedStatement statement;
+            ResultSet rs;
+
+            try {
+
+                connection = dataSource.getConnection();
+                statement = connection.prepareStatement(query);
+
+                for (int i = 0; i < params.length; i++) {
+
+                    statement.setObject(i + 1, params[i]);
+
+                }
+
+                rs = statement.executeQuery();
+
+                return rs;
+
             } catch (SQLException e) {
-                e.printStackTrace();
-                System.err.println("Error executing update: " + e.getMessage());
+
+                throw new RuntimeException("Error while executing query: ", e);
+
             }
-        }, databaseExecutor).orTimeout(10, TimeUnit.SECONDS);
+
+        });
+
     }
 
-    public static CompletableFuture<ResultSet> executeQuery(String sql) {
+    public CompletableFuture<Integer> executeUpdate(String query, Object... params) {
+
         return CompletableFuture.supplyAsync(() -> {
-            try {
-                Connection connection = dataSource.getConnection();
-                Statement statement = connection.createStatement();
-                return statement.executeQuery(sql);
+
+            try (Connection connection = dataSource.getConnection();
+                 PreparedStatement statement = connection.prepareStatement(query)) {
+
+                for (int i = 0; i < params.length; i++) {
+
+                    statement.setObject(i + 1, params[i]);
+
+                }
+
+                return statement.executeUpdate();
+
             } catch (SQLException e) {
-                e.printStackTrace();
-                return null;
+
+                throw new RuntimeException("Error while executing query: ", e);
+
             }
-        }, databaseExecutor).orTimeout(10, TimeUnit.SECONDS);
+
+        });
+
+    }
+
+    public void closeResources(AutoCloseable... resources) {
+
+        for (AutoCloseable resource : resources) {
+
+            if (resource != null) {
+
+                try {
+
+                    resource.close();
+
+                } catch (Exception e) {
+
+                    Logger.error("Error while closing resource: " + resource, "StorageManager");
+
+                }
+
+            }
+        }
+
     }
 
     public void close() {
-        if (dataSource != null) {
-            dataSource.close();
-        }
-        databaseExecutor.shutdown();
-        try {
-            if (!databaseExecutor.awaitTermination(60, TimeUnit.SECONDS)) {
-                databaseExecutor.shutdownNow();
-            }
-        } catch (InterruptedException e) {
-            databaseExecutor.shutdownNow();
-        }
-    }
 
-    public HikariDataSource getDataSource() {
-        return dataSource;
+        if (dataSource != null) {
+
+            dataSource.close();
+
+        }
+
     }
 }

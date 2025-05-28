@@ -1,4 +1,4 @@
-package pro.vulpine.vCrates.utils.logger;
+package dev.vulpine.spectralEconomy.util.logger;
 
 public enum Level {
 
