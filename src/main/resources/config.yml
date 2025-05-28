@@ -9,6 +9,7 @@ storage:
 
 economy:
   currency: "$"
+  starting_balance: 200.0
 
 placeholder_format: "%balance% %currency%" # No color codes here.
 

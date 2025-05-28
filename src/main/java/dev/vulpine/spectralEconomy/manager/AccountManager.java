@@ -87,6 +87,7 @@ public class AccountManager {
     public void createAccount(UUID owner, boolean load) {
         Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [AccountManager] §7[!] Creating account for " + owner.toString() + ".");
         String query = "INSERT INTO accounts (owner, balance) VALUES ('" + owner.toString() + "', 0);";
+        String query = "INSERT INTO accounts (owner, balance) VALUES ('" + owner.toString() + "', " + plugin.getConfig().getDouble("economy.starting_balance") + ");";
 
         StorageManager.executeUpdate(query).thenRun(() -> {
             Bukkit.getConsoleSender().sendMessage("[SpectralEconomy] [AccountManager] §a[+] Created account for " + owner.toString() + ".");
